@@ -8,6 +8,7 @@ provider:
   runtime: python3.9
   region: eu-west-2
   environment:
+    DB_PASSWORD: ${env:DB_PASSWORD}
     SUPABASE_URL: ${env:SUPABASE_URL}
     SUPABASE_KEY: ${env:SUPABASE_KEY}
 

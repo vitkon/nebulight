@@ -4,6 +4,8 @@ import yfinance as yf
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from .models import Base
+from .database import engine
 from .auth import router as auth_router
 from .portfolios import router as portfolio_router
 from .config import SUPABASE_URL, SUPABASE_KEY
@@ -12,6 +14,9 @@ import os
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI()
+
+
+Base.metadata.create_all(bind=engine)
 
 api_prefix="/v1"
 app.include_router(auth_router, prefix=api_prefix)
