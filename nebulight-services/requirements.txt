@@ -1,0 +1,12 @@
+fastapi==0.89.1
+mangum==0.17.0
+uvicorn==0.28.0
+yfinance==0.2.36
+pandas==2.2.0
+python-dateutil==2.8.2
+numpy==1.26.4
+supabase==2.4.5
+supafunc==0.4.5
+python-dotenv==1.0.1
+psycopg2==2.9.9
+SQLAlchemy==2.0.30

@@ -1,0 +1,30 @@
+org: vitkon
+app: nebulight
+service: serverless-fastapi
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: eu-west-2
+  environment:
+    SUPABASE_URL: ${env:SUPABASE_URL}
+    SUPABASE_KEY: ${env:SUPABASE_KEY}
+
+functions:
+  api:
+    handler: src/main.handler
+    events:
+      - httpApi: "*"
+
+useDotenv: true
+plugins:
+  - serverless-python-requirements
+  - serverless-dotenv-plugin
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    slim: true
+    strip: false
+    noDeploy: []
