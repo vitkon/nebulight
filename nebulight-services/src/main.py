@@ -8,6 +8,7 @@ from .models import Base
 from .database import engine
 from .auth import router as auth_router
 from .portfolios import router as portfolio_router
+from .symbol_search import router as symbol_search_router
 from .config import SUPABASE_URL, SUPABASE_KEY
 import os
 
@@ -21,6 +22,7 @@ Base.metadata.create_all(bind=engine)
 api_prefix="/v1"
 app.include_router(auth_router, prefix=api_prefix)
 app.include_router(portfolio_router, prefix=api_prefix)
+app.include_router(symbol_search_router, prefix=api_prefix)
 
 @app.get("/")
 def root():

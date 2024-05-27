@@ -20,6 +20,12 @@ uvicorn src.main:app --reload
   so that non-native python deps are compiled in the right OS
 - `sls deploy`
 
+## DB Migrations
+
+- DB migrations are done wth alemblic
+- `alembic revision --autogenerate -m "create portfolio and portfolio_entitlements tables"`
+- `alembic upgrade head`
+
 # Serverless Framework Python HTTP API on AWS
 
 This template demonstrates how to make a simple HTTP API with Python running on AWS Lambda and API Gateway using the Serverless Framework.
