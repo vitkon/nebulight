@@ -13,6 +13,13 @@ provider:
     SUPABASE_KEY: ${env:SUPABASE_KEY}
 
 functions:
+  scheduledTask:
+    handler: src/scheduled_task.scheduled_task_handler
+    events:
+      - schedule:
+          name: hourly-event
+          description: Trigger every hour
+          rate: cron(0 * * * ? *)
   api:
     handler: src/main.handler
     events:

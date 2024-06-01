@@ -16,8 +16,7 @@ class SymbolSearchResponse(BaseModel):
 
 
 def fetch_symbols():
-    url = f'https://www.alphavantage.co/query?function=LISTING_STATUS&apikey={
-        ALPHA_VANTAGE_API_KEY}'
+    url = f'https://www.alphavantage.co/query?function=LISTING_STATUS&apikey={ALPHA_VANTAGE_API_KEY}'
     response = requests.get(url)
     response.raise_for_status()
     # Parse the CSV response

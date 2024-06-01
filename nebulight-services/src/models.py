@@ -58,8 +58,6 @@ class Ticker(Base):
     exchange = Column(String(10), nullable=False)
     company_name = Column(String(255))
     type = Column(String(255))
-    industry_id = Column(SA_UUID(as_uuid=True),
-                         ForeignKey('nebulight_industries.id'))
     sector_id = Column(SA_UUID(as_uuid=True),
                        ForeignKey('nebulight_sectors.id'))
     __table_args__ = (UniqueConstraint(

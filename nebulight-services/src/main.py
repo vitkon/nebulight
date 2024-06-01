@@ -2,7 +2,6 @@ from fastapi import FastAPI, Query
 from mangum import Mangum
 import yfinance as yf
 import pandas as pd
-from dotenv import load_dotenv
 from supabase import create_client, Client
 from .models import Base
 from .database import engine

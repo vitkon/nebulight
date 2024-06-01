@@ -104,8 +104,7 @@ def compute_rsi(series, period=14):
 
 
 def fetch_earnings_forecast(ticker):
-    url = f'https://www.alphavantage.co/query?function=EARNINGS&symbol={
-        ticker}&apikey={ALPHA_VANTAGE_API_KEY}'
+    url = f'https://www.alphavantage.co/query?function=EARNINGS&symbol={ticker}&apikey={ALPHA_VANTAGE_API_KEY}'
     response = requests.get(url)
     data = response.json()
 
