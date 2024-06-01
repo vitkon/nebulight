@@ -13,6 +13,22 @@ pip install -r requirements.txt
 uvicorn src.main:app --reload
 ```
 
+## Running scripts
+
+`python -m src.scripts.update_sector`
+
+## Code formatting
+
+MS autopep8
+
+```json
+  "[python]": {
+    "editor.formatOnType": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "ms-python.autopep8"
+  }
+```
+
 ## Deployment
 
 - Make sure Docker deamon is running

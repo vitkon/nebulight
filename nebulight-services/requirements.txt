@@ -10,4 +10,6 @@ supabase==2.4.5
 supafunc==0.4.5
 python-dotenv==1.0.1
 psycopg2-binary==2.9.9
+requests==2.31.0
 SQLAlchemy==2.0.30
+bs4==0.0.2
