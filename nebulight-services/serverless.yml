@@ -23,6 +23,11 @@ provider:
           Resource:
             - "arn:aws:s3:::${self:custom.s3Bucket}"
             - "arn:aws:s3:::${self:custom.s3Bucket}/*"
+        - Effect: "Allow"
+          Action:
+            - "glue:CreateCrawler"
+            - "glue:StartCrawler"
+          Resource: "*"
 functions:
   scheduledTask:
     handler: src/scheduled_task.scheduled_task_handler
@@ -56,3 +61,59 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: ${self:custom.s3Bucket}
+    GlueCrawler:
+      Type: AWS::Glue::Crawler
+      Properties:
+        Role:
+          Fn::GetAtt:
+            - GlueCrawlerRole
+            - Arn
+        DatabaseName: nebulight_database
+        Targets:
+          S3Targets:
+            - Path: s3://${self:custom.s3Bucket}/
+        Schedule:
+          ScheduleExpression: cron(0 3 * * ? *)
+    GlueCrawlerRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service: "glue.amazonaws.com"
+              Action: "sts:AssumeRole"
+        Policies:
+          - PolicyName: GlueCrawlerPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "s3:GetObject"
+                    - "s3:ListBucket"
+                  Resource:
+                    - "arn:aws:s3:::${self:custom.s3Bucket}"
+                    - "arn:aws:s3:::${self:custom.s3Bucket}/*"
+                - Effect: "Allow"
+                  Action:
+                    - "glue:GetDatabases"
+                    - "glue:GetDatabase"
+                    - "glue:CreateDatabase"
+                    - "glue:UpdateDatabase"
+                    - "glue:DeleteDatabase"
+                    - "glue:GetTables"
+                    - "glue:GetTable"
+                    - "glue:CreateTable"
+                    - "glue:UpdateTable"
+                    - "glue:DeleteTable"
+                    - "glue:BatchDeleteTable"
+                    - "glue:CreatePartition"
+                    - "glue:BatchCreatePartition"
+                    - "glue:DeletePartition"
+                    - "glue:BatchDeletePartition"
+                    - "glue:GetPartitions"
+                    - "glue:BatchGetPartition"
+                    - "glue:UpdatePartition"
+                  Resource: "*"
