@@ -1,0 +1,16 @@
+# .dockerignore
+*.pyc
+__pycache__/
+.Python
+env/
+venv/
+.venv/
+.pytest_cache/
+.coverage
+*.cover
+*.log
+pip-wheel-metadata/
+pip-log.txt
+htmlcov/
+dist/
+build/

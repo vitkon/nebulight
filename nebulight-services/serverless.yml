@@ -11,15 +11,26 @@ provider:
     DATABASE_URL: ${env:DATABASE_URL}
     SUPABASE_URL: ${env:SUPABASE_URL}
     SUPABASE_KEY: ${env:SUPABASE_KEY}
-
+    S3_DATA_BUCKET: ${self:custom.s3Bucket}
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "s3:PutObject"
+            - "s3:GetObject"
+            - "s3:ListBucket"
+          Resource:
+            - "arn:aws:s3:::${self:custom.s3Bucket}"
+            - "arn:aws:s3:::${self:custom.s3Bucket}/*"
 functions:
   scheduledTask:
     handler: src/scheduled_task.scheduled_task_handler
     events:
       - schedule:
-          name: hourly-event
-          description: Trigger every hour
-          rate: cron(0 * * * ? *)
+          name: every-ten-minutes-event
+          description: Trigger every 10 minutes
+          rate: cron(0/30 * * * ? *)
   api:
     handler: src/main.handler
     events:
@@ -35,4 +46,13 @@ custom:
     dockerizePip: true
     slim: true
     strip: false
-    noDeploy: []
+    noDeploy: ["boto3", "botocore"]
+
+  s3Bucket: nebulight-data
+
+resources:
+  Resources:
+    MyS3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.s3Bucket}

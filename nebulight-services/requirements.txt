@@ -13,3 +13,4 @@ psycopg2-binary==2.9.9
 requests==2.31.0
 SQLAlchemy==2.0.30
 bs4==0.0.2
+fastparquet==2024.5.0
