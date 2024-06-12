@@ -36,12 +36,12 @@ def calculate_relative_strength(stock_ticker, index_ticker, periods):
         index_change = index_end_price / index_start_price
 
         relative_strength = 100 * (stock_change / index_change - 1)
-        results[f'{period}m'] = relative_strength
+        results[f'relative_strength_{period}m'] = relative_strength
 
     return results
 
 
-def calculate_volume_ratio(stock_ticker):
+def calculate_volume_ratio_10d_3m(stock_ticker):
     end_date = datetime.today()
     start_date_3m = end_date - timedelta(days=90)  # Approximate 3 months
 
@@ -56,10 +56,26 @@ def calculate_volume_ratio(stock_ticker):
     avg_volume_3m = stock_data['Volume'].mean()
 
     # Calculate the volume ratio as a percentage
-    volume_ratio = ((avg_volume_10d - avg_volume_3m) / avg_volume_3m) * 100
+    volume_ratio_10d_3m = ((avg_volume_10d - avg_volume_3m) / avg_volume_3m) * 100
 
-    return volume_ratio
+    return volume_ratio_10d_3m
 
+
+def calculate_volume_ratio_1d_2d(stock_ticker):
+    end_date = datetime.today()
+    start_date = end_date - timedelta(days=10)  # Fetch last 10 days to ensure we have at least 2 trading days
+
+    stock_data = yf.download(stock_ticker, start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
+
+    # Ensure we have enough data
+    if len(stock_data) < 2:
+        raise ValueError("Not enough data to calculate volume surge")
+    
+    current_volume = stock_data['Volume'][-1]
+    previous_day_volume = stock_data['Volume'][-2]
+    volume_ratio_1d_2d = ((current_volume - previous_day_volume) / previous_day_volume) * 100
+
+    return volume_ratio_1d_2d
 
 def calculate_price_vs_52_week_high(stock_ticker):
     end_date = datetime.today()
@@ -144,47 +160,19 @@ def calculate_price_vs_200_day_ma(stock_ticker):
 
     return price_vs_200d_ma
 
-
-# Define the ticker symbols and periods
-stock_ticker = 'GOOGL'
-index_ticker = '^GSPC'
-periods = [1, 3, 6, 12]
-
-# Calculate the relative strength
-relative_strength_results = calculate_relative_strength(
-    stock_ticker, index_ticker, periods)
-volume_ratio = calculate_volume_ratio(stock_ticker)
-price_52w_high = calculate_price_vs_52_week_high(stock_ticker)
-price_50d_ma = calculate_price_vs_50_day_ma(stock_ticker)
-price_200d_ma = calculate_price_vs_200_day_ma(stock_ticker)
-
-print(relative_strength_results)
-print('--- Volume 10d/3m')
-print(volume_ratio)
-print('--- 52w High')
-print(price_52w_high)
-print('--- 50d MA')
-print(price_50d_ma)
-print('--- 200d MA')
-print(price_200d_ma)
-
-# relative strength traffic
-# 1m -11% r, -8% o, -5% o, -2% y, -1% y, 3.3% lg, $.39% lg,  8% g
-# 3m -25% r, -21% o, -17% o, -4% y, 1% lg, 17%+ g
-# 6m  -13% o, -11% y, -5.7% y, -2.5% lg, 8% lg, 13%+ g
-# 1y -14% y, -10% lg, -4.8% lg, 20%+ g
-#
-
-# volume_ratio traffic
-# -10%, -18%, -21% - y
-# 6% lg
-# -33% o, -27% o
-# -47% r
-#
-
-#  prices vs %
-# 52w -26% y, 22% y, -8% lg, -8% lg, -5% g, -3% g, -1% g
-# 50d, -11% r, -5% o, 5% lg, 0% y, 9% g 12% g
-# 200d, -4% o, 4.6% y, 8% lg, 16% lg, 20%+ g
-#
-#
+def calculate_momentum_metrics(stock_ticker, exchange = 'Nasdaq'):
+    index_ticker = '^GSPC' if exchange == 'Nasdaq' else 'ASX'
+    momentum_metrics = {}
+    
+    periods = [1, 3, 6, 12]
+    relative_strength_results = calculate_relative_strength(
+        stock_ticker, index_ticker, periods)
+    
+    momentum_metrics.update(relative_strength_results)
+    momentum_metrics['volume_ratio_10d_3m'] = calculate_volume_ratio_10d_3m(stock_ticker)
+    momentum_metrics['volume_ratio_1d_2d'] = calculate_volume_ratio_1d_2d(stock_ticker)
+    momentum_metrics['price_52w_high'] = calculate_price_vs_52_week_high(stock_ticker)
+    momentum_metrics['price_50d_ma'] = calculate_price_vs_50_day_ma(stock_ticker)
+    momentum_metrics['price_200d_ma'] = calculate_price_vs_200_day_ma(stock_ticker)
+    
+    return momentum_metrics

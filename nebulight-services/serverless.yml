@@ -12,6 +12,7 @@ provider:
     SUPABASE_URL: ${env:SUPABASE_URL}
     SUPABASE_KEY: ${env:SUPABASE_KEY}
     S3_DATA_BUCKET: ${self:custom.s3Bucket}
+    S3_DATA_BUCKET_RESULTS: ${self:custom.s3BucketResults}
   iam:
     role:
       statements:
@@ -31,11 +32,12 @@ provider:
 functions:
   scheduledTask:
     handler: src/scheduled_task.scheduled_task_handler
+    timeout: 900
     events:
       - schedule:
-          name: every-ten-minutes-event
-          description: Trigger every 10 minutes
-          rate: cron(0/30 * * * ? *)
+          name: every-day-event
+          description: Trigger every day
+          rate: cron(0 0 * * ? *)
   api:
     handler: src/main.handler
     events:
@@ -54,6 +56,7 @@ custom:
     noDeploy: ["boto3", "botocore"]
 
   s3Bucket: nebulight-data
+  s3BucketResults: nebulight-data-query-results
 
 resources:
   Resources:
@@ -117,3 +120,11 @@ resources:
                     - "glue:BatchGetPartition"
                     - "glue:UpdatePartition"
                   Resource: "*"
+    AthenaWorkGroup:
+      Type: AWS::Athena::WorkGroup
+      Properties:
+        Name: nebulight-workgroup
+        Description: Workgroup for nebulight application
+        WorkGroupConfiguration:
+          ResultConfiguration:
+            OutputLocation: s3://${self:custom.s3BucketResults}/
