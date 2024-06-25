@@ -20,6 +20,7 @@ provider:
           Action:
             - "s3:PutObject"
             - "s3:GetObject"
+            - "s3:DeleteObject"
             - "s3:ListBucket"
           Resource:
             - "arn:aws:s3:::${self:custom.s3Bucket}"
@@ -30,14 +31,30 @@ provider:
             - "glue:StartCrawler"
           Resource: "*"
 functions:
-  scheduledTask:
-    handler: src/scheduled_task.scheduled_task_handler
+  dispatcher:
+    handler: src/scheduler/dispatcher.dispatcher
     timeout: 900
+    environment:
     events:
       - schedule:
-          name: every-day-event
-          description: Trigger every day
           rate: cron(0 0 * * ? *)
+
+  worker:
+    handler: src/scheduler/worker.worker
+    timeout: 900
+
+  combiner:
+    handler: src/scheduler/combiner.combiner
+    timeout: 900
+
+  # scheduledTask:
+  #   handler: src/scheduled_task.scheduled_task_handler
+  #   timeout: 900
+  #   events:
+  #     - schedule:
+  #         name: every-day-event
+  #         description: Trigger every day
+  #         rate: cron(0 0 * * ? *)
   api:
     handler: src/main.handler
     events:
@@ -46,6 +63,7 @@ functions:
 useDotenv: true
 plugins:
   - serverless-python-requirements
+  - serverless-step-functions
   - serverless-dotenv-plugin
 
 custom:

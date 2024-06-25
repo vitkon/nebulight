@@ -1,0 +1,321 @@
+org: vitkon
+app: nebulight
+service: serverless-fastapi
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: python3.9
+  region: eu-west-2
+  environment:
+    DATABASE_URL: ${env:DATABASE_URL}
+    SUPABASE_URL: ${env:SUPABASE_URL}
+    SUPABASE_KEY: ${env:SUPABASE_KEY}
+    S3_DATA_BUCKET: ${self:custom.s3Bucket}
+    S3_DATA_BUCKET_RESULTS: ${self:custom.s3BucketResults}
+    STATE_MACHINE_ARN: ${env:STATE_MACHINE_ARN}
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - "s3:PutObject"
+            - "s3:GetObject"
+            - "s3:ListBucket"
+            - "s3:DeleteObject"
+          Resource:
+            - "arn:aws:s3:::${self:custom.s3Bucket}"
+            - "arn:aws:s3:::${self:custom.s3Bucket}/*"
+        - Effect: "Allow"
+          Action:
+            - "glue:CreateCrawler"
+            - "glue:StartCrawler"
+            - "logs:CreateLogGroup"
+            - "logs:CreateLogStream"
+            - "logs:PutLogEvents"
+          Resource: "*"
+        - Effect: "Allow"
+          Action:
+            - "states:StartExecution"
+          Resource:
+            - "${env:STATE_MACHINE_ARN}"
+
+functions:
+  dispatcher:
+    handler: src/stocks_snapshot/dispatcher.handler
+    timeout: 900
+
+  worker:
+    handler: src/stocks_snapshot/worker.handler
+    timeout: 900
+
+  combiner:
+    handler: src/stocks_snapshot/combiner.handler
+    timeout: 900
+
+  scheduler:
+    handler: src/stocks_snapshot/scheduler.handler
+    environment:
+      STATE_MACHINE_ARN: ${env:STATE_MACHINE_ARN}
+    events:
+      - schedule:
+          name: startSnapshotUK
+          description: "Start State Machine with market UK"
+          enabled: true
+          input:
+            market: "UK"
+          rate: cron(0 23 * * ? *) # 11 PM UTC
+      - schedule:
+          name: startSnapshotUS
+          description: "Start State Machine with market US"
+          enabled: true
+          input:
+            market: "US"
+          rate: cron(0 2 * * ? *) # 1 AM UTC
+
+  api:
+    handler: src/main.handler
+    events:
+      - httpApi: "*"
+
+useDotenv: true
+plugins:
+  - serverless-python-requirements
+  - serverless-step-functions
+  - serverless-dotenv-plugin
+
+custom:
+  pythonRequirements:
+    dockerizePip: true
+    slim: true
+    strip: false
+    noDeploy: ["boto3", "botocore"]
+
+  s3Bucket: nebulight-data
+  s3BucketResults: nebulight-data-query-results
+
+stepFunctions:
+  stateMachines:
+    stockProcessingStateMachine:
+      name: stockProcessingStateMachine
+      definition:
+        Comment: "Stock Processing State Machine"
+        StartAt: DispatchStep
+        States:
+          DispatchStep:
+            Type: Task
+            Resource:
+              Fn::GetAtt:
+                - DispatcherLambdaFunction
+                - Arn
+            ResultSelector:
+              statusCode.$: "$.statusCode"
+              body.$: "$.body"
+            Next: WorkerStep
+          WorkerStep:
+            Type: Map
+            ItemsPath: "$.body.tickers"
+            Parameters:
+              "tickers.$": "$$.Map.Item.Value"
+              "market.$": "$.body.market"
+            Iterator:
+              StartAt: WorkerTask
+              States:
+                WorkerTask:
+                  Type: Task
+                  Resource:
+                    Fn::GetAtt:
+                      - WorkerLambdaFunction
+                      - Arn
+                  End: true
+            ResultSelector:
+              market.$: "$[0].market"
+              date.$: "$[0].date"
+            Next: CombineStep
+          CombineStep:
+            Type: Task
+            Resource:
+              Fn::GetAtt:
+                - CombinerLambdaFunction
+                - Arn
+              Parameters:
+                "market.$": "$.market"
+                "date.$": "$.date"
+            End: true
+resources:
+  Resources:
+    DispatcherLambdaFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        Handler: src/stocks_snapshot/dispatcher.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Timeout: 900
+        Runtime: python3.9
+        Environment:
+          Variables:
+            DATABASE_URL: ${env:DATABASE_URL}
+            SUPABASE_URL: ${env:SUPABASE_URL}
+            SUPABASE_KEY: ${env:SUPABASE_KEY}
+            S3_DATA_BUCKET: ${self:custom.s3Bucket}
+            S3_DATA_BUCKET_RESULTS: ${self:custom.s3BucketResults}
+            STATE_MACHINE_ARN: ${env:STATE_MACHINE_ARN}
+
+    WorkerLambdaFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        Handler: src/stocks_snapshot/worker.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Timeout: 900
+        Runtime: python3.9
+        Environment:
+          Variables:
+            DATABASE_URL: ${env:DATABASE_URL}
+            SUPABASE_URL: ${env:SUPABASE_URL}
+            SUPABASE_KEY: ${env:SUPABASE_KEY}
+            S3_DATA_BUCKET: ${self:custom.s3Bucket}
+            S3_DATA_BUCKET_RESULTS: ${self:custom.s3BucketResults}
+
+    CombinerLambdaFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        Handler: src/stocks_snapshot/combiner.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Timeout: 900
+        Runtime: python3.9
+        Environment:
+          Variables:
+            DATABASE_URL: ${env:DATABASE_URL}
+            SUPABASE_URL: ${env:SUPABASE_URL}
+            SUPABASE_KEY: ${env:SUPABASE_KEY}
+            S3_DATA_BUCKET: ${self:custom.s3Bucket}
+            S3_DATA_BUCKET_RESULTS: ${self:custom.s3BucketResults}
+
+    SchedulerLambdaFunction:
+      Type: AWS::Lambda::Function
+      Properties:
+        Handler: src/stocks_snapshot/scheduler.handler
+        Role: !GetAtt LambdaExecutionRole.Arn
+        Timeout: 900
+        Runtime: python3.9
+        Environment:
+          Variables:
+            STATE_MACHINE_ARN: ${env:STATE_MACHINE_ARN}
+
+    MyS3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.s3Bucket}
+
+    GlueCrawler:
+      Type: AWS::Glue::Crawler
+      Properties:
+        Role:
+          Fn::GetAtt:
+            - GlueCrawlerRole
+            - Arn
+        DatabaseName: nebulight_database
+        Targets:
+          S3Targets:
+            - Path: s3://${self:custom.s3Bucket}/
+        Schedule:
+          ScheduleExpression: cron(0 3 * * ? *)
+
+    GlueCrawlerRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service: "glue.amazonaws.com"
+              Action: "sts:AssumeRole"
+        Policies:
+          - PolicyName: GlueCrawlerPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "s3:GetObject"
+                    - "s3:ListBucket"
+                  Resource:
+                    - "arn:aws:s3:::${self:custom.s3Bucket}"
+                    - "arn:aws:s3:::${self:custom.s3Bucket}/*"
+                - Effect: "Allow"
+                  Action:
+                    - "glue:GetDatabases"
+                    - "glue:GetDatabase"
+                    - "glue:CreateDatabase"
+                    - "glue:UpdateDatabase"
+                    - "glue:DeleteDatabase"
+                    - "glue:GetTables"
+                    - "glue:GetTable"
+                    - "glue:CreateTable"
+                    - "glue:UpdateTable"
+                    - "glue:DeleteTable"
+                    - "glue:BatchDeleteTable"
+                    - "glue:CreatePartition"
+                    - "glue:BatchCreatePartition"
+                    - "glue:DeletePartition"
+                    - "glue:BatchDeletePartition"
+                    - "glue:GetPartitions"
+                    - "glue:BatchGetPartition"
+                    - "glue:UpdatePartition"
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - "logs:CreateLogGroup"
+                    - "logs:CreateLogStream"
+                    - "logs:PutLogEvents"
+                  Resource: "*"
+    LambdaExecutionRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: "sts:AssumeRole"
+        Policies:
+          - PolicyName: LambdaExecutionPolicy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "logs:CreateLogGroup"
+                    - "logs:CreateLogStream"
+                    - "logs:PutLogEvents"
+                  Resource: "arn:aws:logs:*:*:*"
+                - Effect: "Allow"
+                  Action:
+                    - "s3:PutObject"
+                    - "s3:GetObject"
+                    - "s3:ListBucket"
+                    - "s3:DeleteObject"
+                  Resource:
+                    - "arn:aws:s3:::${self:custom.s3Bucket}"
+                    - "arn:aws:s3:::${self:custom.s3Bucket}/*"
+                - Effect: "Allow"
+                  Action:
+                    - "glue:CreateCrawler"
+                    - "glue:StartCrawler"
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - "states:StartExecution"
+                  Resource:
+                    - "${env:STATE_MACHINE_ARN}"
+
+    AthenaWorkGroup:
+      Type: AWS::Athena::WorkGroup
+      Properties:
+        Name: nebulight-workgroup
+        Description: Workgroup for nebulight application
+        WorkGroupConfiguration:
+          ResultConfiguration:
+            OutputLocation: s3://${self:custom.s3BucketResults}/

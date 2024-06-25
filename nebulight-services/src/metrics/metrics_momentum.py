@@ -176,3 +176,15 @@ def calculate_momentum_metrics(stock_ticker, exchange = 'Nasdaq'):
     momentum_metrics['price_200d_ma'] = calculate_price_vs_200_day_ma(stock_ticker)
     
     return momentum_metrics
+
+momentum_metrics_keys = [
+    "relative_strength_1m",
+    "relative_strength_3m",
+    "relative_strength_6m",
+    "relative_strength_12m",
+    "volume_ratio_10d_3m",
+    "volume_ratio_1d_2d"
+    "price_52w_high",
+    "price_50d_ma",
+    "price_200d_ma"
+]
