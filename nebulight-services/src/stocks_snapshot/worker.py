@@ -6,6 +6,7 @@ import pandas as pd
 import yfinance as yf
 from tempfile import NamedTemporaryFile
 from src.metrics.metrics_momentum import calculate_momentum_metrics
+from src.metrics.metrics_financial_summary import calculate_financial_summary_metrics
 
 def fetch_stock_data(ticker_symbol, market = 'US'):
     ticker_symbol_formatted = ticker_symbol if market == 'US' else f'{ticker_symbol}.L'
@@ -16,8 +17,13 @@ def fetch_stock_data(ticker_symbol, market = 'US'):
             return None
         df['symbol'] = ticker_symbol
         momentum_metrics = calculate_momentum_metrics(stock_ticker=ticker_symbol)
-        metrics_df = pd.DataFrame(momentum_metrics, index=df.index)
-        df = pd.concat([df, metrics_df], axis=1)
+        momentum_metrics_df = pd.DataFrame(momentum_metrics, index=df.index)
+        time.sleep(0.5)
+        financial_summary_metrics = calculate_financial_summary_metrics(stock_ticker=ticker_symbol_formatted)
+        financial_summary_df = pd.DataFrame(financial_summary_metrics, index=df.index)
+    
+        df = pd.concat([df, momentum_metrics_df, financial_summary_df], axis=1)
+
         return df
     except Exception as e:
         print(f"Failed to download data for {ticker_symbol}: {e}")
@@ -31,8 +37,11 @@ def handler(event, context):
     
     combined_data = []
     
+    index = 0
     
     for ticker in tickers:
+        index = index + 1
+        print(f">>> Symbol {ticker}: {index} out of {len(tickers)}")
         data = fetch_stock_data(ticker, market)
         if data is not None:
             combined_data.append(data)
@@ -54,3 +63,4 @@ def handler(event, context):
         'market': market,
         'date': combined_df.index[0].isoformat()
     }
+

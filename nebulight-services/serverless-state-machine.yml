@@ -115,6 +115,7 @@ stepFunctions:
           WorkerStep:
             Type: Map
             ItemsPath: "$.body.tickers"
+            MaxConcurrency: 1
             Parameters:
               "tickers.$": "$$.Map.Item.Value"
               "market.$": "$.body.market"

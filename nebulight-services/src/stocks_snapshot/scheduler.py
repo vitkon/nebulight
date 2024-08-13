@@ -8,7 +8,7 @@ def handler(event, context):
     state_machine_arn = os.getenv('STATE_MACHINE_ARN')
     market = event.get('market', 'US')  # Default to 'US' if not provided
     
-    input={ "market": market}
+    input={ "market": market }
 
     response = client.start_execution(
         stateMachineArn=state_machine_arn,

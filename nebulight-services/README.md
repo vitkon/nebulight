@@ -35,6 +35,8 @@ MS autopep8
 - During packaing and pip installation dependencies are going to be built in a lambda-like docker container
   so that non-native python deps are compiled in the right OS
 - `sls deploy`
+- deploy with config file
+  `serverless deploy -c serverless-state-machine.yml`
 
 ## DB Migrations
 

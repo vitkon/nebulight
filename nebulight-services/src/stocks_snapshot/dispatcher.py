@@ -44,7 +44,7 @@ def handler(event, context):
     
     # Fetch ticker symbols from your database
     ticker_symbols = fetch_nasdaq_ticker_symbols(market)
-    batch_size = 500
+    batch_size = 100
     # Split the list into smaller batches
     batches = list(split_list(ticker_symbols, batch_size))
     
